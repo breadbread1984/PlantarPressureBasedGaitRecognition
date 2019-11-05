@@ -130,6 +130,7 @@ def preprocess(image):
         ref = tf.math.atan2(v[1,1],v[0,1]);
         # polar mean
         dist, angle = polar_mean(pts, center);
+        diff = angle - ref;
         if True:
             # draw center of the foot
             cv2.circle(mask, tuple(center.astype('int32')), 5, (255,255,255));
