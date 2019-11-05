@@ -37,16 +37,32 @@ def mean(pts, img = None, weighted = False):
         mean = tf.math.reduce_mean(pts, axis = 0);
     return mean.numpy();
 
-def covariance(pts, m = None, img = None, weighted = False):
+def polar_mean(pts, center):
     
+    assert type(pts) is np.ndarray and len(pts.shape) == 2 and pts.shape[1] == 2;
+    assert type(center) is np.ndarray and len(center.shape) == 1 and center.shape[0] == 2;
+    # dev.shape = (n, 2)
+    dev = pts - center;
+    # distances.shape = (n,)
+    distances = tf.norm(dev, axis = 1);
+    mask = tf.math.less(distances, 20);
+    # angles.shape =(n,)
+    dev = tf.boolean_mask(dev, mask);
+    angles = tf.math.atan2(dev[:,1], dev[:,0]);
+    mean_dist = tf.math.reduce_mean(distances);
+    mean_angle = tf.math.reduce_mean(angles);
+    return mean_dist.numpy(), mean_angle.numpy();
+
+def covariance(pts, center = None, img = None, weighted = False):
+
     assert type(pts) is np.ndarray and len(pts.shape) == 2 and pts.shape[1] == 2;
     if weighted == True: assert img is not None;
     x = tf.cast(pts, dtype = tf.float32);
-    if m is None:
+    if center is None:
         # centralized.shape = (n, 2)
         centralized = x - mean(x);
     else:
-        centralized = x - m;
+        centralized = x - center;
     if weighted:
         img = tf.cast(img, dtype = tf.float32);
         weights = tf.gather_nd(img, tf.reverse(pts, axis = [1]));
@@ -58,16 +74,16 @@ def covariance(pts, m = None, img = None, weighted = False):
         # cov.shape = (2,2)
         cov = tf.linalg.matmul(tf.transpose(centralized, (1, 0)), centralized) / (pts.shape[0] - 1);
     return cov.numpy();
-    
+
 def eigvec(cov):
-    
+
     assert type(cov) is np.ndarray and len(cov.shape) == 2 and cov.shape[1] == 2;
     cov = tf.constant(cov, dtype = tf.float32);
     e,v = tf.linalg.eigh(cov);
     return e.numpy(), v.numpy();
 
 def preprocess(image):
-    
+
     # 1) find a foot print instance (bounding, pixels)
     ret, mask = cv2.threshold(image, 1,255,cv2.THRESH_BINARY);
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask, 4, cv2.CV_32S);
@@ -75,7 +91,7 @@ def preprocess(image):
     for label in range(num_labels):
         comp_mask = np.where(labels == label);
         # skip small component
-        if len(comp_mask[0]) < 100 or len(comp_mask[0]) > 1000000: continue;
+        if len(comp_mask[0]) < 80 or len(comp_mask[0]) > 1000000: continue;
         # comp_coor.shape = (number, 2)
         comp_coor = np.array(list(zip(comp_mask[1],comp_mask[0])));
         x,y,w,h = cv2.boundingRect(comp_coor);
@@ -100,8 +116,8 @@ def preprocess(image):
         for key, comp in comp_boundings.items():
             ul = np.array(comp[1][0:2]);
             dr = np.array(comp[1][0:2]) + np.array(comp[1][2:4]);
-            cv2.rectangle(image, tuple(ul),tuple(dr), (255,255,255), 2);
-    
+            cv2.rectangle(mask, tuple(ul),tuple(dr), (255,255,255), 2);
+
     # 2) calculate mean and eigvec of each foot print
     for key, foot in comp_boundings.items():
         pts = foot[0];
@@ -111,16 +127,21 @@ def preprocess(image):
         # cov.shape = (2,2)
         cov = covariance(pts, center, image, True);
         e, v = eigvec(cov);
+        ref = tf.math.atan2(v[1,1],v[0,1]);
+        # polar mean
+        dist, angle = polar_mean(pts, center);
         if True:
             # draw center of the foot
-            cv2.circle(image, tuple(center.astype('int32')), 5, (255,255,255));
+            cv2.circle(mask, tuple(center.astype('int32')), 5, (255,255,255));
             # mean direction
             pts1 = center + 0.4 * e[0] * v[:,0];
             pts2 = center + 0.4 * e[1] * v[:,1];
-            cv2.line(image, tuple(center.astype('int32')), tuple(pts1.astype('int32')), (255,255,255), 1);
-            cv2.line(image, tuple(center.astype('int32')), tuple(pts2.astype('int32')), (255,255,255), 1);
-        
-    cv2.imshow('comp', image);
+            cv2.line(mask, tuple(center.astype('int32')), tuple(pts1.astype('int32')), (255,255,255), 1);
+            cv2.line(mask, tuple(center.astype('int32')), tuple(pts2.astype('int32')), (255,255,255), 1);
+            # print mean dist and mean polar
+            cv2.putText(mask, str(angle - ref.numpy()), (bounding[0],bounding[1]-4), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.5, (255,255,255), 1, 8);
+
+    cv2.imshow('comp', mask);
     cv2.waitKey();
 
 if __name__ == "__main__":
