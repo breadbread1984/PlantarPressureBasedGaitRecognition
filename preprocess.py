@@ -104,8 +104,12 @@ def crop(image, center, angle, src_size, dst_size):
 
 def preprocess(image):
 
+    if len(image.shape) == 3:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY);
+    else:
+        gray = image.copy();
     # 1) find a foot print instance (bounding, pixels)
-    ret, mask = cv2.threshold(image, 1,255,cv2.THRESH_BINARY);
+    ret, mask = cv2.threshold(gray, 1,255,cv2.THRESH_BINARY);
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask, 4, cv2.CV_32S);
     comp_boundings = dict();
     for label in range(num_labels):
@@ -135,7 +139,7 @@ def preprocess(image):
         for key, comp in comp_boundings.items():
             ul = np.array(comp[1][0:2]);
             dr = np.array(comp[1][0:2]) + np.array(comp[1][2:4]);
-            cv2.rectangle(mask, tuple(ul),tuple(dr), (255,255,255), 2);
+            cv2.rectangle(image, tuple(ul),tuple(dr), (255,255,255), 2);
 
     # 2) calculate mean and eigvec of each foot print
     leftfeet = list();
@@ -144,9 +148,9 @@ def preprocess(image):
         pts = foot[0];
         bounding = foot[1];
         # center.shape = (2,)
-        center = mean(pts, image, True);
+        center = mean(pts, gray, True);
         # cov.shape = (2,2)
-        cov = covariance(pts, center, image, True);
+        cov = covariance(pts, center, gray, True);
         e, v = eigvec(cov);
         ref = atan2(v[1,1],v[0,1]);
         # polar mean
@@ -155,9 +159,9 @@ def preprocess(image):
         # eigenvector angle
         angle = atan2(v[1,1], v[0,1]);
         length = tf.norm(0.18 * e[1] * v[:,1]).numpy();
-        foot = crop(image, center, angle, (length, length), (length, length));
+        foot = crop(gray, center, angle, (length, length), (250, 250));
         cv2.imshow('foot', foot);
-        cv2.waitKey();
+        #cv2.waitKey();
         if diff < 0:
             # left foot
             pass;
@@ -166,16 +170,16 @@ def preprocess(image):
             pass;
         if True:
             # draw center of the foot
-            cv2.circle(mask, tuple(center.astype('int32')), 5, (255,255,255));
+            cv2.circle(image, tuple(center.astype('int32')), 5, (255,255,255));
             # mean direction
             pts1 = center + 0.09 * e[0] * v[:,0];
             pts2 = center + 0.09 * e[1] * v[:,1];
-            cv2.line(mask, tuple(center.astype('int32')), tuple(pts1.astype('int32')), (255,255,255), 1);
-            cv2.line(mask, tuple(center.astype('int32')), tuple(pts2.astype('int32')), (255,255,255), 1);
+            cv2.line(image, tuple(center.astype('int32')), tuple(pts1.astype('int32')), (255,255,255), 1);
+            cv2.line(image, tuple(center.astype('int32')), tuple(pts2.astype('int32')), (255,255,255), 1);
             # print mean dist and mean polar
-            cv2.putText(mask, str(diff), (bounding[0],bounding[1]-4), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.5, (255,255,255), 1, 8);
+            cv2.putText(image, str(diff), (bounding[0],bounding[1]-4), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.5, (255,255,255), 1, 8);
 
-    cv2.imshow('comp', mask);
+    cv2.imshow('comp', image);
     cv2.waitKey();
 
 if __name__ == "__main__":
@@ -183,7 +187,7 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: " + sys.argv[0] + " <image>");
         exit(1);
-    img = cv2.imread(sys.argv[1], cv2.IMREAD_GRAYSCALE);
+    img = cv2.imread(sys.argv[1]);
     if img is None:
         print("invalid image!");
         exit(1);
