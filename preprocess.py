@@ -96,13 +96,14 @@ def crop(image, center, angle, src_size, dst_size):
     rotate[0,0] = cos(-angle);  rotate[0,1] = -sin(-angle);
     rotate[1,0] = sin(-angle);  rotate[1,1] = cos(-angle);
     translate2 = np.eye(3, dtype = np.float32);
-    translate2[0,2] = -center[0];
-    translate2[1,2] = -center[1];
+    translate2[0,2] = src_size[0] / 2;
+    translate2[1,2] = src_size[1] / 2;
     affine = np.dot(translate2,np.dot(rotate,translate1));
     affine = affine[0:2,:];
-    return cv2.warpAffine(img, affine, dst_size);
+    cropped = cv2.warpAffine(img, affine, src_size);
+    return cv2.resize(cropped, dst_size);
 
-def preprocess(image):
+def preprocess(image, size = (250,250)):
 
     if len(image.shape) == 3:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY);
@@ -135,12 +136,6 @@ def preprocess(image):
                 del comp_boundings[key];
         comp_boundings[label] = (comp_coor, (x, y, w, h));
 
-    if True:
-        for key, comp in comp_boundings.items():
-            ul = np.array(comp[1][0:2]);
-            dr = np.array(comp[1][0:2]) + np.array(comp[1][2:4]);
-            cv2.rectangle(image, tuple(ul),tuple(dr), (255,255,255), 2);
-
     # 2) calculate mean and eigvec of each foot print
     leftfeet = list();
     rightfeet = list();
@@ -158,29 +153,16 @@ def preprocess(image):
         diff = angle - ref;
         # eigenvector angle
         angle = atan2(v[1,1], v[0,1]);
-        length = tf.norm(0.18 * e[1] * v[:,1]).numpy();
-        foot = crop(gray, center, angle, (length, length), (250, 250));
-        cv2.imshow('foot', foot);
-        #cv2.waitKey();
+        length = tf.norm(0.16 * e[1] * v[:,1]).numpy();
+        foot = crop(image, center, angle, (length, length), size);
         if diff < 0:
             # left foot
-            pass;
+            leftfeet.append(foot);
         else:
             # right foot
-            pass;
-        if True:
-            # draw center of the foot
-            cv2.circle(image, tuple(center.astype('int32')), 5, (255,255,255));
-            # mean direction
-            pts1 = center + 0.09 * e[0] * v[:,0];
-            pts2 = center + 0.09 * e[1] * v[:,1];
-            cv2.line(image, tuple(center.astype('int32')), tuple(pts1.astype('int32')), (255,255,255), 1);
-            cv2.line(image, tuple(center.astype('int32')), tuple(pts2.astype('int32')), (255,255,255), 1);
-            # print mean dist and mean polar
-            cv2.putText(image, str(diff), (bounding[0],bounding[1]-4), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.5, (255,255,255), 1, 8);
+            rightfeet.append(foot);
 
-    cv2.imshow('comp', image);
-    cv2.waitKey();
+    return leftfeet, rightfeet;
 
 if __name__ == "__main__":
     
@@ -191,4 +173,10 @@ if __name__ == "__main__":
     if img is None:
         print("invalid image!");
         exit(1);
-    preprocess(img);
+    leftfeet,rightfeet = preprocess(img);
+    for leftfoot in leftfeet:
+        cv2.imshow("leftfoot",leftfoot);
+        cv2.waitKey();
+    for rightfoot in rightfeet:
+        cv2.imshow("rightfoot",rightfoot);
+        cv2.waitKey();
