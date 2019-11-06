@@ -95,22 +95,21 @@ def preprocess(image):
         # comp_coor.shape = (number, 2)
         comp_coor = np.array(list(zip(comp_mask[1],comp_mask[0])));
         x,y,w,h = cv2.boundingRect(comp_coor);
-        # swelled version of the bounding
-        center = np.array([x + w // 2, y + h // 2]);
-        swelled = (center[0] - 2 * w, center[1] - h // 2, 4 * w, h);
-        merged = False;
-        for key, comp in comp_boundings.items():
-            intersect = intersection(comp[1], swelled);
-            if intersect[2] * intersect[3] > 0:
-                # merge to existing component is they are intersected
-                comp_boundings[key] = (
-                    np.concatenate([comp[0], comp_coor], axis = 0),
-                    union(comp[1], (x, y, w, h))
-                );
-                merged = True;
-                break;
-        if False == merged:
-            comp_boundings[label] = (comp_coor, (x,y,w,h));
+        while True:
+            # swelled version of the bounding
+            center = np.array([x + w // 2, y + h // 2]);
+            swelled = (center[0] - 2 * w, center[1] - h // 2, 4 * w, h);
+            merge_list = list();
+            for key, comp in comp_boundings.items():
+                intersect = intersection(comp[1], swelled);
+                if intersect[2] * intersect[3] > 0:
+                    merge_list.append(key);
+            if 0 == len(merge_list): break;
+            for key in merge_list:
+                comp_coor = np.concatenate([comp_boundings[key][0], comp_coor], axis = 0);
+                x, y, w, h = union(comp_boundings[key][1], (x, y, w, h));
+                del comp_boundings[key];
+        comp_boundings[label] = (comp_coor, (x, y, w, h));
 
     if True:
         for key, comp in comp_boundings.items():
@@ -131,6 +130,12 @@ def preprocess(image):
         # polar mean
         dist, angle = polar_mean(pts, center);
         diff = angle - ref;
+        if diff < 0:
+            # left foot
+            pass;
+        else:
+            # right foot
+            pass;
         if True:
             # draw center of the foot
             cv2.circle(mask, tuple(center.astype('int32')), 5, (255,255,255));
