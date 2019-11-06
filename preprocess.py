@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import sys;
+from math import cos, sin, atan2;
 import numpy as np;
 import tensorflow as tf;
 import cv2;
@@ -82,6 +83,25 @@ def eigvec(cov):
     e,v = tf.linalg.eigh(cov);
     return e.numpy(), v.numpy();
 
+def crop(image, center, angle, src_size, dst_size):
+    
+    img = image.copy();
+    # translate image to make center at origin position
+    # anti-clockwise rotate by angle
+    # translate image to make the origin at the center position
+    translate1 = np.eye(3, dtype = np.float32);
+    translate1[0,2] = -center[0];
+    translate1[1,2] = -center[1];
+    rotate = np.eye(3, dtype = np.float32);
+    rotate[0,0] = cos(-angle);  rotate[0,1] = -sin(-angle);
+    rotate[1,0] = sin(-angle);  rotate[1,1] = cos(-angle);
+    translate2 = np.eye(3, dtype = np.float32);
+    translate2[0,2] = -center[0];
+    translate2[1,2] = -center[1];
+    affine = np.dot(translate2,np.dot(rotate,translate1));
+    affine = affine[0:2,:];
+    return cv2.warpAffine(img, affine, dst_size);
+
 def preprocess(image):
 
     # 1) find a foot print instance (bounding, pixels)
@@ -91,10 +111,10 @@ def preprocess(image):
     for label in range(num_labels):
         comp_mask = np.where(labels == label);
         # skip small component
-        if len(comp_mask[0]) < 80 or len(comp_mask[0]) > 1000000: continue;
+        if len(comp_mask[0]) < 50 or len(comp_mask[0]) > 1000000: continue;
         # comp_coor.shape = (number, 2)
         comp_coor = np.array(list(zip(comp_mask[1],comp_mask[0])));
-        x,y,w,h = cv2.boundingRect(comp_coor);
+        x, y, w, h = cv2.boundingRect(comp_coor);
         while True:
             # swelled version of the bounding
             center = np.array([x + w // 2, y + h // 2]);
@@ -118,6 +138,8 @@ def preprocess(image):
             cv2.rectangle(mask, tuple(ul),tuple(dr), (255,255,255), 2);
 
     # 2) calculate mean and eigvec of each foot print
+    leftfeet = list();
+    rightfeet = list();
     for key, foot in comp_boundings.items():
         pts = foot[0];
         bounding = foot[1];
@@ -126,10 +148,16 @@ def preprocess(image):
         # cov.shape = (2,2)
         cov = covariance(pts, center, image, True);
         e, v = eigvec(cov);
-        ref = tf.math.atan2(v[1,1],v[0,1]);
+        ref = atan2(v[1,1],v[0,1]);
         # polar mean
         dist, angle = polar_mean(pts, center);
         diff = angle - ref;
+        # eigenvector angle
+        angle = atan2(v[1,1], v[0,1]);
+        length = tf.norm(0.18 * e[1] * v[:,1]).numpy();
+        foot = crop(image, center, angle, (length, length), (length, length));
+        cv2.imshow('foot', foot);
+        cv2.waitKey();
         if diff < 0:
             # left foot
             pass;
@@ -140,12 +168,12 @@ def preprocess(image):
             # draw center of the foot
             cv2.circle(mask, tuple(center.astype('int32')), 5, (255,255,255));
             # mean direction
-            pts1 = center + 0.4 * e[0] * v[:,0];
-            pts2 = center + 0.4 * e[1] * v[:,1];
+            pts1 = center + 0.09 * e[0] * v[:,0];
+            pts2 = center + 0.09 * e[1] * v[:,1];
             cv2.line(mask, tuple(center.astype('int32')), tuple(pts1.astype('int32')), (255,255,255), 1);
             cv2.line(mask, tuple(center.astype('int32')), tuple(pts2.astype('int32')), (255,255,255), 1);
             # print mean dist and mean polar
-            cv2.putText(mask, str(angle - ref.numpy()), (bounding[0],bounding[1]-4), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.5, (255,255,255), 1, 8);
+            cv2.putText(mask, str(diff), (bounding[0],bounding[1]-4), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 0.5, (255,255,255), 1, 8);
 
     cv2.imshow('comp', mask);
     cv2.waitKey();
