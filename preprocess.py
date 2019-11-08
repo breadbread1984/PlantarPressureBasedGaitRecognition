@@ -147,6 +147,8 @@ def preprocess(image, size = (250,250)):
         # cov.shape = (2,2)
         cov = covariance(pts, center, gray, True);
         e, v = eigvec(cov);
+        # eliminate false negative
+        if max(e) / min(e) < 5 or pts.shape[0] < 900: continue;
         ref = atan2(v[1,1],v[0,1]);
         # polar mean
         dist, angle = polar_mean(pts, center);
