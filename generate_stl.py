@@ -39,6 +39,6 @@ def generate_stl(img):
 if __name__ == "__main__":
 
   from preprocess import preprocess;
-  img = cv2.imread('/mnt/c/Users/Lenovo/Downloads/preview.bmp');
+  img = cv2.imread('/mnt/preview.bmp');
   leftfeet,rightfeet = preprocess(img);
   generate_stl(leftfeet[0]);
