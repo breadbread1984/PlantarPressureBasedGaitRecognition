@@ -4,7 +4,7 @@ import numpy as np;
 import cv2;
 import pymesh;
 #import pygmsh;
-import stl;
+#import stl;
 
 def generate_stl(img):
 
@@ -20,7 +20,7 @@ def generate_stl(img):
   hull = cv2.convexHull(all_contours, False); # hull.shape = (num, 1, 2)
   # 3) generate triangle mesh for the polygon
   vertices = np.squeeze(hull);
-  tri = pymesh.triangle();
+  tri = pymesh.triangles();
   tri.max_area = 0.05;
   tri.split_boundary = True;
   tri.verbosity = 0;
@@ -45,6 +45,6 @@ def generate_stl(img):
 if __name__ == "__main__":
 
   from preprocess import preprocess;
-  img = cv2.imread('/mnt/c/Users/Lenovo/Downloads/preview.bmp');
+  img = cv2.imread('/mnt/preview.bmp');
   leftfeet,rightfeet = preprocess(img);
   generate_stl(leftfeet[0]);
