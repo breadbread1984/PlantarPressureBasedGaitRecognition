@@ -2,8 +2,7 @@
 
 import numpy as np;
 import cv2;
-import pymesh;
-#import pygmsh;
+import triangle;
 import stl;
 
 def generate_stl(img):
@@ -19,22 +18,17 @@ def generate_stl(img):
   # 2) convex hull
   hull = cv2.convexHull(all_contours, False); # hull.shape = (num, 1, 2)
   # 3) generate triangle mesh for the polygon
-  vertices = np.squeeze(hull);
-  tri = pymesh.triangle();
-  tri.max_area = 0.05;
-  tri.split_boundary = True;
-  tri.verbosity = 0;
-  tri.run();
-  mesh = tri.mesh;
-  '''
-  geom = pygmsh.built_in.Geometry();
-  coords = np.squeeze(hull); # coords.shape = (num, 2)
-  coords = np.concatenate([coords, np.zeros((coords.shape[0], 1))], axis = -1); # coords.shape = (num, 3)
-  poly = geom.add_polygon(coords.tolist(), lcar = 0.05);
-  geom.extrude(poly, translation_axis = (0,0,1), rotation_axis = (0,0,1), point_on_axis = (0,0,0), angle = 0);
-  mesh = pygmsh.generate_mesh(geom);
-  print(mesh)
-  '''
+  t = triangle.Triangle();
+  points = np.squeeze(hull); # points.shape = (pts_num, 2)
+  markers = np.ones((points.shape[0],)); # markers.shape = (pts_num)
+  t.set_points(points, markers = markers.tolist());
+  segments = zip(
+    [i for i in range(points.shape[0])],
+    [(i + 1) % points.shape[0] for i in range(points.shape[0])]
+  ); # segments.shape = (seg_num, 2)
+  t.set_segments(segments);
+  t.triangulate(area = 0.01);
+  triangles = t.get_triangles();
   '''
   img_contours = np.zeros(img.shape);
   cv2.drawContours(img, [hull,], -1, (0,255,0), 3);
