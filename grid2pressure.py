@@ -27,8 +27,8 @@ def pressure(pts, shape):
   xy = tf.expand_dims(xy, axis = -2); # xy.shape = (h, w, 1, 2)
   pts = tf.reshape(pts, (1,1,-1,2)); # pts.shape = (1, 1, n, 2)
   dist = tf.norm(xy - pts, ord = 'euclidean', axis = -1); # dist.shape = (h,w,n)
-  less_than_thres = tf.cast(tf.math.less_equal(dist, 5), dtype = tf.float32); # less_than_thres.shape = (h, w, n)
-  heat_map = tf.math.reduce_sum(less_than_thres, axis = -1); # heat_map.shape = (h, w)
+  heat = 0.2 * tf.math.exp(-dist ** 2 / 100); # heat.shape = (h,w,n)
+  heat_map = tf.math.reduce_sum(heat, axis = -1); # heat_map.shape = (h, w)
   return heat_map.numpy();
 
 if __name__ == "__main__":
@@ -39,6 +39,7 @@ if __name__ == "__main__":
   pts, shape = sift(sys.argv[1]);
   heatmap = pressure(pts, shape);
   import matplotlib.pyplot as plt;
+  fig = plt.figure();
   plt.imshow(heatmap, cmap = 'hot');
-  plt.show();
+  fig.savefig('plot.pdf');
   

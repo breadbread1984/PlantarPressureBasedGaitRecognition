@@ -19,15 +19,16 @@ def generate_stl(img):
   hull = cv2.convexHull(all_contours, False); # hull.shape = (num, 1, 2)
   # 3) generate triangle mesh for the polygon
   t = triangle.Triangle();
-  points = np.squeeze(hull); # points.shape = (pts_num, 2)
-  markers = np.ones((points.shape[0],)); # markers.shape = (pts_num)
-  t.set_points(points, markers = markers.tolist());
-  segments = zip(
+  points = np.squeeze(hull).astype('float32'); # points.shape = (pts_num, 2)
+  markers = np.ones((points.shape[0],), dtype = np.int32); # markers.shape = (pts_num)
+  t.set_points(points.tolist(), markers = markers.tolist());
+  segments = list(zip(
     [i for i in range(points.shape[0])],
     [(i + 1) % points.shape[0] for i in range(points.shape[0])]
-  ); # segments.shape = (seg_num, 2)
+  )); # segments.shape = (seg_num, 2)
   t.set_segments(segments);
-  t.triangulate(area = 0.01);
+  t.set_holes([]);
+  t.triangulate(area = 0.1);
   triangles = t.get_triangles();
   '''
   img_contours = np.zeros(img.shape);
@@ -39,6 +40,6 @@ def generate_stl(img):
 if __name__ == "__main__":
 
   from preprocess import preprocess;
-  img = cv2.imread('/mnt/preview.bmp');
+  img = cv2.imread('preview.bmp');
   leftfeet,rightfeet = preprocess(img);
   generate_stl(leftfeet[0]);
