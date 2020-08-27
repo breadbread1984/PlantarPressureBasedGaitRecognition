@@ -3,7 +3,7 @@
 import numpy as np;
 import cv2;
 import triangle;
-import stl;
+from stl import mesh;
 import tensorflow as tf;
 
 def generate_stl(img, variable_thickness = 5, const_thickness = 1):
@@ -61,10 +61,26 @@ def generate_stl(img, variable_thickness = 5, const_thickness = 1):
   top_z = variable_thickness - (center_value - min_value) * variable_thickness / (max_value - min_value) + const_thickness; # top.shape = (node_num)
   top = tf.concat([centers, tf.expand_dims(top_z, axis = -1)], axis = -1); # top.shape = (node_num, 3)
   # generate bottom mesh
-  bottom_z = tf.zeros_like(top); # bottom.shape = (node_num)
+  bottom_z = tf.zeros_like(top_z); # bottom.shape = (node_num)
   bottom = tf.concat([centers, tf.expand_dims(bottom_z, axis = -1)], axis = -1); # bottom.shape = (node_num, 3)
   # generate edge
-  
+  top_edge = tf.concat([tf.cast(tf.squeeze(hull), dtype = tf.float64), (variable_thickness + const_thickness) * tf.ones((hull.shape[0], 1), dtype = tf.float64)], axis = -1); # top_edge.shape = (pts_num, 3)
+  bottom_edge = tf.concat([tf.cast(tf.squeeze(hull), dtype = tf.float64), tf.zeros((hull.shape[0], 1), dtype = tf.float64)], axis = -1); # bottom_edge.shape = (pts_num, 3)
+  edge = tf.concat([top_edge, bottom_edge], axis = 0); # edge.shape = (pts_num * 2, 3)
+  edge_faces = list();
+  for i in range(hull.shape[0]):
+    edge_faces.append((i, i + 1, (i + hull.shape[0]) % (2*hull.shape[0])));
+    edge_faces.append((i + 1, (i + hull.shape[0]) % (2*hull.shape[0]), (i + hull.shape[0] + 1) % (2*hull.shape[0])));
+  vertices = tf.concat([top, bottom, edge], axis = 0); # vertices.shape = (node_num * 2, 3)
+  top_faces = tf.constant([face[0] for face in triangles], dtype = tf.int32); # top_faces.shape = (face_num, 3)
+  bottom_faces = top_faces + top.shape[0]; # bottom_faces.shape = (face_num, 3)
+  edge_faces = tf.constant(edge_faces, dtype = tf.int32) + top.shape[0] + bottom.shape[0];
+  faces = tf.concat([top_faces, bottom_faces, edge_faces], axis = 0); # faces.shape = (face_num * 2 + edge_face_num, 3)
+  solid = mesh.Mesh(np.zeros(faces.shape[0], dtype = mesh.Mesh.dtype));
+  for i, face in enumerate(faces):
+    for j in range(3):
+      solid.vectors[i][j] = vertices[face[j], :];
+  solid.save('solid.stl');
   '''
   img_contours = np.zeros(img.shape);
   cv2.drawContours(img, [hull,], -1, (0,255,0), 3);
