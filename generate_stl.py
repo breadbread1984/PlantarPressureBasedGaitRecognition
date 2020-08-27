@@ -81,12 +81,6 @@ def generate_stl(img, variable_thickness = 5, const_thickness = 1):
     for j in range(3):
       solid.vectors[i][j] = vertices[face[j], :];
   solid.save('solid.stl');
-  '''
-  img_contours = np.zeros(img.shape);
-  cv2.drawContours(img, [hull,], -1, (0,255,0), 3);
-  cv2.imshow('', img_contours);
-  cv2.waitKey();
-  '''
   
 if __name__ == "__main__":
 
