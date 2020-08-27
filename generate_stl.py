@@ -4,6 +4,7 @@ import numpy as np;
 import cv2;
 import triangle;
 import stl;
+import tensorflow as tf;
 
 def generate_stl(img, variable_thickness = 5, const_thickness = 1):
 
@@ -31,20 +32,37 @@ def generate_stl(img, variable_thickness = 5, const_thickness = 1):
   t.triangulate(area = 5);
   nodes = t.get_nodes();
   triangles = t.get_triangles();
-  # 4) output stl file
-  # generate top mesh
-  max_value = np.max(gray);
-  min_value = np.min(gray);
+  # 4) interpolate to get the pressure value at nodes
+  # interpolate value at the float coordinates
   centers = np.array([node[0] for node in nodes], dtype = np.float32); # centers.shape = (node_num, 2) in sequence of (x,y)
   upperleft = np.floor(centers).astype('int32'); # upperleft = (min(x), min(y))
   downright = np.ceil(centers).astype('int32'); # downright = (max(x), max(y))
   upperright = np.concatenate([downright[:,0:1], upperleft[:,1:2]], axis = -1).astype('int32'); # upperright = (max(x), min(y))
   downleft = np.concatenate([upperleft[:,0:1], downright[:,1:2]], axis = -1).astype('int32'); # downleft = (min(x), max(y))
-  upperleft_value = 
-  z = variable_thickness - (gray - min_value) * variable_thickness / (max_value - min_value) + const_thickness;
-  
+  # NOTE: gather with coordinates in sequence of (y, x), therefore we use reverse
+  upperleft_value = tf.cast(tf.gather_nd(gray, tf.reverse(upperleft, axis = [-1])), dtype = tf.float64);
+  downright_value = tf.cast(tf.gather_nd(gray, tf.reverse(downright, axis = [-1])), dtype = tf.float64);
+  upperright_value = tf.cast(tf.gather_nd(gray, tf.reverse(upperright, axis = [-1])), dtype = tf.float64);
+  downleft_value = tf.cast(tf.gather_nd(gray, tf.reverse(downleft, axis = [-1])), dtype = tf.float64);
+  upperleft_weight = tf.math.exp(-tf.norm(upperleft - centers, axis = -1)); # upperleft_weight.shape = (node_num)
+  downright_weight = tf.math.exp(-tf.norm(downright - centers, axis = -1)); # downright_weight.shape = (node_num)
+  upperright_weight = tf.math.exp(-tf.norm(upperright - centers, axis = -1)); # upperright_weight.shape = (node_num)
+  downleft_weight = tf.math.exp(-tf.norm(downleft - centers, axis = -1)); # downleft_weight.shape = (node_num)
+  total = upperleft_weight + downright_weight + upperright_weight + downleft_weight;
+  upperleft_weight = upperleft_weight / total;
+  downright_weight = downright_weight / total;
+  upperright_weight = upperright_weight / total;
+  downleft_weight = downleft_weight / total;
+  center_value = upperleft_value * upperleft_weight + downright_value * downright_weight + upperright_value * upperright_weight + downleft_value * downleft_weight; # center_value.shape = (node_num)
+  # 5) output stl file
+  # generate top mesh
+  max_value = tf.math.reduce_max(center_value);
+  min_value = tf.math.reduce_min(center_value);
+  top_z = variable_thickness - (center_value - min_value) * variable_thickness / (max_value - min_value) + const_thickness; # top.shape = (node_num)
+  top = tf.concat([centers, tf.expand_dims(top_z, axis = -1)], axis = -1); # top.shape = (node_num, 3)
   # generate bottom mesh
-  
+  bottom_z = tf.zeros_like(top); # bottom.shape = (node_num)
+  bottom = tf.concat([centers, tf.expand_dims(bottom_z, axis = -1)], axis = -1); # bottom.shape = (node_num, 3)
   # generate edge
   
   '''
