@@ -29,7 +29,7 @@ def generate_stl(img, variable_thickness = 5, const_thickness = 1):
   )); # segments.shape = (seg_num, 2)
   t.set_segments(segments);
   t.set_holes([]);
-  t.triangulate(area = 5);
+  t.triangulate(area = 0.5);
   nodes = t.get_nodes();
   triangles = t.get_triangles();
   # 4) interpolate to get the pressure value at nodes
