@@ -51,6 +51,7 @@ class VideoDisplayWidget(QWidget):
     ret, frame = self.cap.read();
     if ret == False:
       self.timer.stop();
+      return;
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB);
     img = QImage(frame, frame.shape[1], frame.shape[0], QImage.Format_RGB888);
     pix = QPixmap.fromImage(img);
