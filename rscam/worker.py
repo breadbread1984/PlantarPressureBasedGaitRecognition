@@ -25,18 +25,32 @@ class PlantarPressureWorker(Task):
   def __init__(self):
 
     ctx = rs.context();
-    devices = ctx.query_devices();
+    self.devices = ctx.query_devices();
     self.configs = list();
-    for device in devices:
+    for device in self.devices:
       config = rs.config();
       config.enable_device(device.get_info(rs.camera_info.serial_number));
       config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30);
       config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30);
       self.configs.append(config);
 
-  def count(self):
+  def info(self):
     
-    return len(self.configs);
+    retval = [{'advanced_mode': device.get_info(rs.camera_info.advanced_mode),
+               'asic_serial_number': device.get_info(rs.camera_info.asic_serial_number),
+               'camera_locked': device.get_info(rs.camera_info.asic_serial_number),
+               'debug_op_code': device.get_info(rs.camera_info.debug_op_code),
+               'firmware_update_id': device.get_info(rs.camera_info.firmware_update_id),
+               'firmware_version': device.get_info(rs.camera_info.firmware_version),
+               'name': device.get_info(rs.camera_info.name),
+               'physical_port': device.get_info(rs.camera_info.physical_port),
+               'product_id': device.get_info(rs.camera_info.product_id),
+               'product_line': device.get_info(rs.camera_info.product_line),
+               'recommended_firmware_version': device.get_info(rs.camera_info.recommended_firmware_version),
+               'serial_number': device.get_info(rs.camera_info.serial_number),
+               'usb_type_descriptor': device.get_info(rs.camera_info.usb_type_descriptor)
+               } for device in self.devices];
+    return retval;
 
   def capture(self, cam_id):
     
@@ -57,10 +71,10 @@ class PlantarPressureWorker(Task):
       pipeline.stop();
       return False, None, None;
 
-@celery.task(name = 'count', base = PlantarPressureWorker)
-def count():
+@celery.task(name = 'info', base = PlantarPressureWorker)
+def info():
 
-  return count.count();
+  return info.info();
 
 @celery.task(name = 'capture', base = PlantarPressureWorker)
 def capture(cam_id):
