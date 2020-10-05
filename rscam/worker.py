@@ -27,12 +27,25 @@ class PlantarPressureWorker(Task):
     ctx = rs.context();
     self.devices = ctx.query_devices();
     self.configs = list();
+    self.filters = list();
     for device in self.devices:
       config = rs.config();
       config.enable_device(device.get_info(rs.camera_info.serial_number));
-      config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30);
-      config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30);
+      config.enable_stream(rs.stream.depth, IMG_WIDTH, IMG_HEIGHT, rs.format.z16, 30);
+      config.enable_stream(rs.stream.color, IMG_WIDTH, IMG_HEIGHT, rs.format.bgr8, 30);
       self.configs.append(config);
+      align = rs.align(rs.stream.color);
+      spatial = rs.spatial_filter();
+      spatial.set_option(rs.option.filter_magnitude, 5);
+      spatial.set_option(rs.option.filter_smooth_alpha, 1);
+      spatial.set_option(rs.option.filter_smooth_delta, 50);
+      spatial.set_option(ts.option.hols_fill, 3);
+      temporal = rs.temporal_filter();
+      hole_filling = rs.hole_filling_filter();
+      depth_to_disparity = rs.disparity_transform(True);
+      disparity_to_depth = rs.disparity_transform(False);
+      self.filters.append({'align': align, 'spatial': spatial, 'temporal': temporal, 'hole': hole_filling,
+                           'disparity': depth_to_disparity, 'depth': disparity_to_depth});
 
   def info(self):
     
@@ -56,10 +69,19 @@ class PlantarPressureWorker(Task):
     
     pipeline = rs.pipeline();
     pipeline.start(self.configs[cam_id]);
+    # auto-exposure adjustment
+    for i in range(5):
+      pipeline.wait_for_frames();
     try:
       frames = pipeline.wait_for_frames();
-      depth_frame = frames.get_depth_frame();
-      color_frame = frames.get_color_frame();
+      alignment = self.filters[cam_id]['align'].process(frames);
+      depth_frame = alignment.get_depth_frame();
+      depth_frame = self.filters[cam_id]['disparity'].process(depth_frame);
+      depth_frame = self.filters[cam_id]['spatial'].process(depth_frame);
+      depth_frame = self.filters[cam_id]['temporal'].process(depth_frame);
+      depth_frame = self.filters[cam_id]['depth'].process(depth_frame);
+      depth_frame = self.filters[cam_id]['hole'].process(depth_frame);
+      color_frame = alignment.get_color_frame();
       if not depth_frame or not color_frame:
         pipeline.stop();
         return False, None, None;
