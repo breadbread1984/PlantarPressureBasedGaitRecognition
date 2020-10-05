@@ -1,7 +1,11 @@
 #!/usr/bin/python3
 
+from os import mkdir;
+from os.path import join, exists;
+from shutil import rmtree;
 from celery import Celery;
 import numpy as np;
+from scipy.misc import toimage;
 from settings import *;
 
 class Reconstruct(object):
@@ -12,8 +16,14 @@ class Reconstruct(object):
 
   def reconstruct(self):
 
-    
-
+    captured = self.__capture();
+    sequence = 0;
+    if exists('captured'): rmtree('captured');
+    else: mkdir('captured');
+    for depth, color in captured:
+      toimage(depth, cmin = CLIPPED_LOW, cmax = CLIPPED_HIGH).save(join('captured', str(sequence).zfill(3) + '_mask.png'));
+      toimage(depth).save(join('captured', str(sequence).zfill(3) + '.png'));
+    # TODO: call openMVG openMVS
     
   def __masked(self, depth, distance = CLIPPING_DISTANCE):
 
@@ -35,5 +45,9 @@ class Reconstruct(object):
         return False;
       depth = np.array(depth);
       color = np.array(color);
-      retval.append((depth, color))'
+      retval.append((self.__masked(depth), color));
     return retval;
+
+if __name__ == "__main__":
+
+  Reconstruct recon;

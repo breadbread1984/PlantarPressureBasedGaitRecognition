@@ -88,7 +88,7 @@ class PlantarPressureWorker(Task):
       depth_image = np.asanyarray(depth_frame.get_data());
       color_image = np.asanyarray(color_frame.get_data());
       pipeline.stop();
-      return True, depth_image, color_image;
+      return True, depth_image.tolist(), color_image.tolist();
     except:
       pipeline.stop();
       return False, None, None;
