@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from os import mkdir;
+from os import mkdir, system;
 from os.path import join, exists;
 from shutil import rmtree;
 from celery import Celery;
@@ -14,7 +14,7 @@ class Reconstruct(object):
 
     self.worker = Celery('worker', backend = MESSAGE_QUEUE_URI, broker = MESSAGE_QUEUE_URI);
 
-  def reconstruct(self):
+  def reconstruct(self, focal = 1536 openmvg_prefix='/root/opt/openmvg', openmvs_prefix='/root/opt/openmvs'):
 
     captured = self.__capture();
     sequence = 0;
@@ -23,6 +23,16 @@ class Reconstruct(object):
     for depth, color in captured:
       toimage(depth, cmin = CLIPPED_LOW, cmax = CLIPPED_HIGH).save(join('captured', str(sequence).zfill(3) + '_mask.png'));
       toimage(depth).save(join('captured', str(sequence).zfill(3) + '.png'));
+    # generate image list
+    try:
+      system(join(openmvg_prefix, 'bin', 'openMVG_main_SfMInit_ImageListing') + \
+             ' -d ' + join(openmvg_prefix, 'share', 'openMVG', 'sensor_width_camera_database.txt') + \
+             ' -i ' + 'captured/' + \
+             ' -o ' + 'matches/' + \
+             str(focal));
+    except:
+      print('openMVG_main_SfMInit_ImageListing failed!');
+      return;
     # TODO: call openMVG openMVS
     
   def __masked(self, depth, distance = CLIPPING_DISTANCE):
