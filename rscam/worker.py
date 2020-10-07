@@ -49,9 +49,9 @@ class PlantarPressureWorker(Task):
 
   def info(self):
     
-    retval = [{'advanced_mode': device.get_info(rs.camera_info.advanced_mode),
+    retval = [{#'advanced_mode': device.get_info(rs.camera_info.advanced_mode),
                'asic_serial_number': device.get_info(rs.camera_info.asic_serial_number),
-               'camera_locked': device.get_info(rs.camera_info.asic_serial_number),
+               'camera_locked': device.get_info(rs.camera_info.camera_locked),
                'debug_op_code': device.get_info(rs.camera_info.debug_op_code),
                'firmware_update_id': device.get_info(rs.camera_info.firmware_update_id),
                'firmware_version': device.get_info(rs.camera_info.firmware_version),
@@ -59,9 +59,9 @@ class PlantarPressureWorker(Task):
                'physical_port': device.get_info(rs.camera_info.physical_port),
                'product_id': device.get_info(rs.camera_info.product_id),
                'product_line': device.get_info(rs.camera_info.product_line),
-               'recommended_firmware_version': device.get_info(rs.camera_info.recommended_firmware_version),
+               #'recommended_firmware_version': device.get_info(rs.camera_info.recommended_firmware_version),
                'serial_number': device.get_info(rs.camera_info.serial_number),
-               'usb_type_descriptor': device.get_info(rs.camera_info.usb_type_descriptor)
+               #'usb_type_descriptor': device.get_info(rs.camera_info.usb_type_descriptor)
                } for device in self.devices];
     return retval;
 
