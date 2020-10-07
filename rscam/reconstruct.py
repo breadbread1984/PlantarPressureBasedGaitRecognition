@@ -56,6 +56,7 @@ class Reconstruct(object):
     for depth, color in captured:
       toimage(depth, cmin = CLIPPED_LOW, cmax = CLIPPED_HIGH).save(join('captured', str(sequence).zfill(3) + '_mask.png'));
       toimage(color).save(join('captured', str(sequence).zfill(3) + '.png'));
+      masked_color = color.copy();
       masked_color[np.bitwise_or(depth == CLIPPED_HIGH, depth == CLIPPED_LOW)] = np.zeros((color.shape[-1]));
       toimage(masked_color).save(join('images', str(sequence).zfill(3) + '.png'));
     # 1) generate image list
