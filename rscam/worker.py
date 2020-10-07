@@ -39,7 +39,7 @@ class PlantarPressureWorker(Task):
       spatial.set_option(rs.option.filter_magnitude, 5);
       spatial.set_option(rs.option.filter_smooth_alpha, 1);
       spatial.set_option(rs.option.filter_smooth_delta, 50);
-      spatial.set_option(ts.option.hols_fill, 3);
+      spatial.set_option(ts.option.holes_fill, 3);
       temporal = rs.temporal_filter();
       hole_filling = rs.hole_filling_filter();
       depth_to_disparity = rs.disparity_transform(True);
