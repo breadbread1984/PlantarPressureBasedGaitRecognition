@@ -6,7 +6,7 @@ from os.path import join, exists;
 from shutil import rmtree;
 from celery import Celery;
 import numpy as np;
-from PIL import Image;
+import cv2;
 from settings import *;
 
 class DescriberPreset(Enum):
@@ -54,11 +54,11 @@ class Reconstruct(object):
     if exists('images'): rmtree('images');
     mkdir('images');
     for depth, color in captured:
-      Image.fromarray(depth).save(join('captured', str(sequence).zfill(3) + '_mask.png'));
-      Image.fromarray(color).save(join('captured', str(sequence).zfill(3) + '.png'));
+      cv2.imwrite(join('captured', str(sequence).zfill(3) + '_mask.png'), depth);
+      cv2.imwrite(join('captured', str(sequence).zfill(3) + '.png'), color);
       masked_color = color.copy();
-      masked_color[np.bitwise_or(depth == CLIPPED_HIGH, depth == CLIPPED_LOW)] = np.zeros((color.shape[-1]));
-      Image.fromarray(masked_color).save(join('images', str(sequence).zfill(3) + '.png'));
+      masked_color[depth == CLIPPED_HIGH] = np.zeros((color.shape[-1]));
+      cv2.imwrite(join('images', str(sequence).zfill(3) + '.png'), masked_color);
     # 1) generate image list
     try:
       system(join(openmvg_prefix, 'bin', 'openMVG_main_SfMInit_ImageListing') + \
