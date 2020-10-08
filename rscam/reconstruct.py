@@ -53,12 +53,11 @@ class Reconstruct(object):
     mkdir('captured');
     if exists('images'): rmtree('images');
     mkdir('images');
-    for depth, color in captured:
+    for depth, color, mask in captured:
       cv2.imwrite(join('captured', str(sequence).zfill(3) + '_mask.png'), depth);
       cv2.imwrite(join('captured', str(sequence).zfill(3) + '.png'), color);
-      masked_color = color.copy();
-      masked_color[depth == CLIPPED_HIGH] = np.zeros((color.shape[-1]));
-      cv2.imwrite(join('images', str(sequence).zfill(3) + '.png'), masked_color);
+      color[mask == CLIPPED_HIGH] = np.zeros((color.shape[-1]));
+      cv2.imwrite(join('images', str(sequence).zfill(3) + '.png'), color);
     # 1) generate image list
     try:
       system(join(openmvg_prefix, 'bin', 'openMVG_main_SfMInit_ImageListing') + \
@@ -139,10 +138,10 @@ class Reconstruct(object):
     
   def __masked(self, depth, distance = CLIPPING_DISTANCE):
 
-    clipping_distance = distance / depth_scale;
-    depth[depth < clipping_distance] = CLIPPED_LOW;
-    depth[depth > clipping_distance] = CLIPPED_HIGH;
-    return depth;
+    mask = np.zeros_like(depth);
+    mask[depth < clipping_distance] = CLIPPED_LOW;
+    mask[np.bitwise_or(depth >= clipping_distance, depth == 0)] = CLIPPED_HIGH;
+    return mask;
 
   def __capture(self):
 
@@ -157,7 +156,7 @@ class Reconstruct(object):
         return False;
       depth = np.array(depth);
       color = np.array(color);
-      retval.append((self.__masked(depth), color));
+      retval.append((depth, color, self.__masked(depth)));
     return retval;
 
 if __name__ == "__main__":
