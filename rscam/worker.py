@@ -44,8 +44,9 @@ class PlantarPressureWorker(Task):
       hole_filling = rs.hole_filling_filter();
       depth_to_disparity = rs.disparity_transform(True);
       disparity_to_depth = rs.disparity_transform(False);
+      decimate = rs.decimation_filter();
       self.filters.append({'align': align, 'spatial': spatial, 'temporal': temporal, 'hole': hole_filling,
-                           'disparity': depth_to_disparity, 'depth': disparity_to_depth});
+                           'disparity': depth_to_disparity, 'depth': disparity_to_depth, 'decimate': decimate});
 
   def info(self):
     
@@ -92,6 +93,34 @@ class PlantarPressureWorker(Task):
     except:
       pipeline.stop();
       return False, None, None;
+  
+  def point_cloud(self, cam_id):
+      
+    pipeline = rs.pipeline();
+    pipeline.start(self.configs[cam_id]);
+    # auto-exposure adjustment
+    for i in range(5):
+      pipeline.wait_for_frames();
+    try:
+      frames = pipeline.wait_for_frames();
+      alignment = self.filters[cam_id]['align'].process(frames);
+      depth_frame = alignment.get_depth_frame();
+      color_frame = alignment.get_color_frame();
+      depth_frame = decimate.process(depth_frame);
+      self.filters[cam_id]['hole'].process(depth_frame);
+      self.filters[cam_id]['decimate'].process(depth_frame);
+      #depth_intrinsics = rs.video_stream_profile(depth_frame.profile).get_intrinsics();
+      depth_image = np.asanyarray(depth_frame.get_data());
+      color_image = np.asanyarray(color_frame.get_data());
+      depth_colormap = np.asanyarray(colorizer.colorize(depth_frame).get_data());
+      pc = rs.pointcloud();
+      points = pc.calculate(depth_frame);
+      pc.map_to(color_frame);
+      v = points.get_vertices();
+      t = points.get_texture_coordinates();
+      verts = np.asanyarray(v).view(np.float32).reshape(-1, 3); # xyz
+      texcoords = np.asanyarray(t).view(np.float32).reshape(-1, 2); # uv
+      # TODO
 
 @celery.task(name = 'info', base = PlantarPressureWorker)
 def info():
