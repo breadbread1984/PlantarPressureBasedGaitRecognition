@@ -119,83 +119,71 @@ class PlantarPressureWorker(Task):
       pc.map_to(color_frame);
       v = points.get_vertices();
       t = points.get_texture_coordinates();
-      verts = np.asanyarray(v).view(np.float32).reshape(-1, 3); # xyz
-      texcoords = np.asanyarray(t).view(np.float32).reshape(-1, 2); # uv
-      # TODO
+      verts = np.asanyarray(v).view(np.float32).reshape(-1, 3); # xyz.shape = (n, 3)
+      texcoords = np.asanyarray(t).view(np.float32).reshape(-1, 2); # uv.shape = (n, 2) in relative float number
+      return verts, texcoords;
 
-  def pointcloud(self, out, verts, texcoords, color, painter = True):
-      
-    # TODO
+  def pointcloud(self, out, verts, texcoords, color, painter = True, translation = np.array([0, 0, -1], dtype = np.float32), pitch = 0, yaw = 0, distance = 2):
+
+    # out: image where the voxels are painted
+    # verts: the coordinates of voxel in camera coordinate system
+    # texcoordinate: the coordinates of voxel in image coordinate system
+    # color: the captured image
+    if painter:
+      v = self.view(verts, translation, pitch, yaw, distance); # get coordinate of verts in world coordinate system
+      s = v[:, 2].argsort()[::-1]; # sort coordinates with respect to z value in descent order in order to draw further voxel first
+      proj = project(v[s]); # get homogeneous coordinate
+    else:
+      # not sorting to the voxels, therefore the voxels are not draw in order
+      proj = project(self.view(verts, translation, pitch, yaw, distance));
+    h, w = out.shape[:2];
+    j, i = proj.astype(np.uint32); # get u,v of homogeneous coordinate
+    # mask of visible voxel in image area
+    im = (i >= 0) & (i < h);
+    jm = (j >= 0) & (j < w);
+    m = im & jm;
+    cw, ch = color.shape[:2][::-1]; # get rgb captured image size
+    # turn the texcoordinate into absolute coordinate
+    if painter:
+      v, u = (texcoords[s] * (cw, ch) + 0.5).astype(np.uint32).T;
+    else:
+      v, u = (texcoords * (cw, ch) + 0.5).astype(np.uint32).T;
+    # clip texcoordinate within captured image area
+    np.clip(u, 0, ch-1, out=u);
+    np.clip(v, 0, cw-1, out=v);
+    # paint the output image
+    out[i[m], j[m]] = color[u[m], v[m]];
+    return out;
 
   def project(self, out, v):
 
+    # project coordinate in camera coordinate system to homogeneous coordinate in image coordinate system
+    # NOTE: out.shape = (h, w, 3) v.shape = (n, 3)
     h, w = out.shape[:2];
     view_aspect = float(h) / w;
     with np.errstate(divide = 'ignore', invalid = 'ignore'):
-      proj = v[:, :-1] / v[:, -1, np.newaxis] * (w * view_aspect, h) + (w/2.0, h/2.0);
+      # (x,y)/z * (h,h) + (w/2,h/2)
+      proj = v[:, :-1] / v[:, -1:] * (w * view_aspect, h) + (w/2.0, h/2.0);
     znear = 0.03;
+    # ignore the points with small z value
     proj[v[:, 2] < znear] = np.nan;
     return proj;
 
-  def line3d(self, out, pt1, pt2, color = (0x80, 0x80, 0x80), thickness = 1):
-
-    p0 = self.project(out, p1.reshape(-1, 3))[0];
-    p1 = self.project(out, p2.reshape(-1, 3))[0];
-    if np.isnan(p0).any() or np.isnan(p1).any(): return;
-    p0 = tuple(p0.astype(int));
-    p1 = tuple(p1.astype(int));
-    rect = (0, 0, out.shape[1], out.shape[0]);
-    inside, p0, p1 = cv2.clipline(rect, p0, p1);
-    if inside:
-      cv2.line(out, p0, p1, color, thickness, cv2.LINE_AA);
-
   def view(self, v, translation = np.array([0, 0, -1], dtype = np.float32), pitch = 0, yaw = 0, distance = 2):
 
-    # input: v original location of the object
-    # output: the location of the object being observed in the camera coordinate system
-    pivot = translation + np.array((0, 0, distance), dtype = np.float32); # location of the rotation center
+    # NOTE: coordinate in old camera coordinate system -> coordinate in new camera coordinate system
+    # v: object coordinate in the old camera (RealSense camera) coordinate system
+    # translation: the translation of the new camera (virtual camera) with respect to the old camera (RealSense camera)
+    # (0, 0, distance): the translation of the pivot with respect to the new camera (virtual camera)
+    # pitch: pitch angle with respect to the old camera (RealSense camera) coordinate system
+    # yaw: yaw angle with respect to the old camera (RealSense camera) coordinate system
+    # output: object coordinate in the new camera (virtual camera) coordinate system
+    # NOTE: the distance between the camera and the pivot on z axis of world coordinate will always be 1
+    pivot = translation + np.array((0, 0, distance), dtype = np.float32); # translation of the pivot with respect to the olde camera (RealSense camera)
     Rx, _ = cv2.Rodrigues((pitch, 0, 0)); # euler angles -> rotation matrix
     Ry, _ = cv2.Rodrigues((0, yaw, 0)); # euler angles -> rotation matrix
     rotation = np.dot(Ry, Rx).astype(np.float32); # merged rotation matrix
-    return np.dot(v - pivot, rotation) + pivot - translation; # rotate target object
-
-  def grid(self, out, pos, rotation = np.eye(3), size = 1, n = 10, color = (0x80, 0x80, 0x80)):
-
-    pos = np.array(pos);
-    s = size / float(n);
-    s2 = 0.5 * size;
-    for i in range(0, n+1):
-      x = -s2 + i * s;
-      self.line3d(out, self.view(pos + np.dot((x, 0, -s2), rotation)), self.view(pos + np.dot((x, 0, s2), rotation)), color);
-    for i in range(0, n+1):
-      z = -s2 + i * s;
-      self.line3d(out, self.view(pos + np.dot((-s2, 0, z), rotation)), self.view(pos + np.dot((s2, 0, z), rotation)), color);
-
-  def frustum(self, out, intrinsics, color = (0x40, 0x40, 0x40)):
-
-    orig = self.view([0, 0, 0]);
-    w, h = intrinsics.width, intrinsics.height;
-    for d in range(1, 6, 2):
-      def get_point(x, y):
-        p = rs.rs2_deproject_pixel_to_point(intrinsics, [x, y], d);
-        self.line3d(out, orig, self.view(p), color);
-        return p;
-
-      top_left = get_point(0, 0);
-      top_right = get_point(w, 0);
-      bottom_right = get_point(w, h);
-      bottom_left = get_point(0, h);
-      
-      self.line3d(out, self.view(top_left), self.view(top_right), color);
-      self.line3d(out, self.view(top_right), self.view(bottom_right), color);
-      self.line3d(out, self.view(bottom_right), self.view(bottom_left), color);
-      self.line3d(out, self.view(bottom_left), self.view(top_left), color);
-
-  def axes(self, out, pos, rotation = np.eye(3), size = 0.075, thickness = 2):
-
-    self.line3d(out, pos, pos + np.dot((0, 0, size), rotation), (0xff, 0, 0), thickness);
-    self.line3d(out, pos, pos + np.dot((0, size, 0), rotation), (0, 0xff, 0), thickness);
-    self.line3d(out, pos, pos + np.dot((size, 0, 0), rotation), (0, 0, 0xff), thickness);
+    return np.dot(v - pivot, rotation) + pivot - translation; # coordinate in new camera (virtual camera) coordinate system
 
 @celery.task(name = 'info', base = PlantarPressureWorker)
 def info():
