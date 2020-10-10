@@ -178,8 +178,9 @@ class PlantarPressureWorker(Task):
     # pitch: pitch angle with respect to the old camera (RealSense camera) coordinate system
     # yaw: yaw angle with respect to the old camera (RealSense camera) coordinate system
     # output: object coordinate in the new camera (virtual camera) coordinate system
-    # NOTE: the distance between the camera and the pivot on z axis of world coordinate will always be 1
-    pivot = translation + np.array((0, 0, distance), dtype = np.float32); # translation of the pivot with respect to the olde camera (RealSense camera)
+    # NOTE: because, the translation of the pivot with respect to the old camera is fixed
+    # when change distance, the translation of the new camera have to be changed accordingly
+    pivot = translation + np.array((0, 0, distance), dtype = np.float32); # translation of the pivot with respect to the old camera (RealSense camera)
     Rx, _ = cv2.Rodrigues((pitch, 0, 0)); # euler angles -> rotation matrix
     Ry, _ = cv2.Rodrigues((0, yaw, 0)); # euler angles -> rotation matrix
     rotation = np.dot(Ry, Rx).astype(np.float32); # merged rotation matrix
