@@ -162,13 +162,26 @@ class VisualizeAdjustment(object):
     rotation = np.dot(Ry, Rx).astype(np.float32);
     self.translations[3] -= np.dot(rotation, np.array((-dz, dy, dx), dtype = np.float32));
 
+  def change_euler(self, dyaw, dpitch):
+
+    self.yaw += dyaw;
+    self.pitch += dpitch;
+
 if __name__ == "__main__":
 
   va = VisualizeAdjustment();
   prev_mouse = (0, 0);
+  w, h = va.size();
+
   def mouse_cb(event, x, y, flags, param):
 
     if event == cv2.EVENT_MOUSEMOVE:
+
+      dx, dy = x - prev_mouse[0], y - prev_mouse[1];
+
+      if event == cv2.EVENT_LBUTTONDOWN:
+
+        va.change_euler(float(dx) / w * 2, -float(dy) / h * 2);
 
       if event == cv2.EVENT_RBUTTONDOWN:
 
@@ -177,13 +190,11 @@ if __name__ == "__main__":
 
       if event == cv2.EVENT_MBUTTONDOWN:
         
-        dx, dy = x - prev_mouse[0], y - prev_mouse[1];
         dz = sqrt(dx**2 + dy**2) + copysign(0.01, -dy);
         va.change_distance(dz);
 
     prev_mouse = (x, y);
 
-  w, h = va.size();
   cv2.namedWindow('show', cv2.WINDOW_AUTOSIZE);
   cv2.resizeWindow('show', w, h);
   cv2.setMouseCallback('show', mouse_cb);
