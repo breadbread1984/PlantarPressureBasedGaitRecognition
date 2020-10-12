@@ -29,6 +29,8 @@ class VisualizeAdjustment(object):
   def view(self, v, cam_id):
 
     # INFO: this function transform cloud points from physical camera coordinate systems to the virtual camera coordinate system
+    # NOTE: translation: the translation of the new camera (virtual camera) with respect to the old camera (RealSense camera)
+    # NOTE: (x, y, z): the translation of the pivot with respect to the new camera (virtual camera)
     # v.shape = (n, 3) the coordinate in a physical camera coordinate system
     # cam_id.shape = (n) the index of the camera coordinate system which the cloud point belongs to.
     pivots = list();
@@ -166,6 +168,16 @@ class VisualizeAdjustment(object):
 
     self.yaw += dyaw;
     self.pitch += dpitch;
+    
+  def reset_position(self):
+
+    self.distance = 2;
+    self.translations[0] = np.array([0, 0, -1], dtype = np.float32); # south
+    self.translations[1] = np.array([-2, 0, 1], dtype = np.float32); # east
+    self.translations[2] = np.array([0, 0, 3], dtype = np.float32); # north
+    self.translations[3] = np.array([2, 0, 1], dtype = np.float32); # west
+    self.pitch = 0;
+    self.yaw = 0;
 
 if __name__ == "__main__":
 
@@ -231,4 +243,5 @@ if __name__ == "__main__":
     if key == ord('q'):
       print('calibrated optimal distance is %d' % distance);
       break;
-
+    if key == ord('r'):
+      va.reset_position();
