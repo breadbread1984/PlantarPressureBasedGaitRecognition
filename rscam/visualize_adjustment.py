@@ -138,11 +138,29 @@ class VisualizeAdjustment(object):
     # west: descrease on x axis
     self.translations[3][0] -= dz;
 
-  def set_translation(self, dp):
+  def change_translation(self, dp):
 
-    rotation = 
-    self.translations[0] -= ;
-    self.translations[1] 
+    dx, dy, dz = dp;
+    # south
+    Rx, _ = cv2.Rodrigues((self.pitch, 0, 0));
+    Ry, _ = cv2.Rodrigues((0, self.yaw, 0));
+    rotation = np.dot(Ry, Rx).astype(np.float32);
+    self.translations[0] -= np.dot(rotation, np.array((dx, dy, dz), dtype = np.float32));
+    # east
+    Rx, _ = cv2.Rodrigues((0, 0, 0));
+    Ry, _ = cv2.Rodrigues((0, self.yaw + pi / 2, 0));
+    rotation = np.dot(Ry, Rx).astype(np.float32);
+    self.translations[1] -= np.dot(rotation, np.array((dz, dy, -dx), dtype = np.float32));
+    # north
+    Rx, _ = cv2.Rodrigues((-self.pitch, 0, 0));
+    Ry, _ = cv2.Rodrigues((0, self.yaw + pi / 2 * 2, 0));
+    rotation = np.dot(Ry, Rx).astype(np.float32);
+    self.translations[2] -= np.dot(rotation, np.array((-dx, dy, -dz), dtype = np.float32));
+    # west
+    Rx, _ = cv2.Rodrigues((0, 0, 0));
+    Ry, _ = cv2.Rodrigues((0, self.yaw + pi / 2 * 3, 0));
+    rotation = np.dot(Ry, Rx).astype(np.float32);
+    self.translations[3] -= np.dot(rotation, np.array((-dz, dy, dx), dtype = np.float32));
 
 if __name__ == "__main__":
 
@@ -155,7 +173,7 @@ if __name__ == "__main__":
       if event == cv2.EVENT_RBUTTONDOWN:
 
         dp = np.array((dx / w, dy / h, 0), dtype = np.float32)
-        
+        va.change_translation(dp);
 
       if event == cv2.EVENT_MBUTTONDOWN:
         
