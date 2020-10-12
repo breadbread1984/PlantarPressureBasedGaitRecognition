@@ -116,69 +116,6 @@ class PlantarPressureWorker(Task):
     texcoords = np.asanyarray(t).view(np.float32).reshape(-1, 2); # uv.shape = (n, 2) in relative float number
     return True, (verts.tolist(), texcoords.tolist(), depth_image.tolist(), color_image.tolist());
 
-  def pointcloud(self, out, verts, texcoords, color, painter = True, translation = np.array([0, 0, -1], dtype = np.float32), pitch = 0, yaw = 0, distance = 2):
-
-    # out: image where the voxels are painted
-    # verts: the coordinates of voxel in camera coordinate system
-    # texcoordinate: the coordinates of voxel in image coordinate system
-    # color: the captured image
-    if painter:
-      v = self.view(verts, translation, pitch, yaw, distance); # get coordinate of verts in world coordinate system
-      s = v[:, 2].argsort()[::-1]; # sort coordinates with respect to z value in descent order in order to draw further voxel first
-      proj = project(v[s]); # get homogeneous coordinate
-    else:
-      # not sorting to the voxels, therefore the voxels are not draw in order
-      proj = project(self.view(verts, translation, pitch, yaw, distance));
-    h, w = out.shape[:2];
-    j, i = proj.astype(np.uint32); # get u,v of homogeneous coordinate
-    # mask of visible voxel in image area
-    im = (i >= 0) & (i < h);
-    jm = (j >= 0) & (j < w);
-    m = im & jm;
-    cw, ch = color.shape[:2][::-1]; # get rgb captured image size
-    # turn the texcoordinate into absolute coordinate
-    if painter:
-      v, u = (texcoords[s] * (cw, ch) + 0.5).astype(np.uint32).T;
-    else:
-      v, u = (texcoords * (cw, ch) + 0.5).astype(np.uint32).T;
-    # clip texcoordinate within captured image area
-    np.clip(u, 0, ch-1, out=u);
-    np.clip(v, 0, cw-1, out=v);
-    # paint the output image
-    out[i[m], j[m]] = color[u[m], v[m]];
-    return out;
-
-  def project(self, out, v):
-
-    # project coordinate in camera coordinate system to homogeneous coordinate in image coordinate system
-    # NOTE: out.shape = (h, w, 3) v.shape = (n, 3)
-    h, w = out.shape[:2];
-    view_aspect = float(h) / w;
-    with np.errstate(divide = 'ignore', invalid = 'ignore'):
-      # (x,y)/z * (h,h) + (w/2,h/2)
-      proj = v[:, :-1] / v[:, -1:] * (w * view_aspect, h) + (w/2.0, h/2.0);
-    znear = 0.03;
-    # ignore the points with small z value
-    proj[v[:, 2] < znear] = np.nan;
-    return proj;
-
-  def view(self, v, translation = np.array([0, 0, -1], dtype = np.float32), pitch = 0, yaw = 0, distance = 2):
-
-    # NOTE: coordinate in old camera coordinate system -> coordinate in new camera coordinate system
-    # v: object coordinate in the old camera (RealSense camera) coordinate system
-    # translation: the translation of the new camera (virtual camera) with respect to the old camera (RealSense camera)
-    # (0, 0, distance): the translation of the pivot with respect to the new camera (virtual camera)
-    # pitch: pitch angle with respect to the old camera (RealSense camera) coordinate system
-    # yaw: yaw angle with respect to the old camera (RealSense camera) coordinate system
-    # output: object coordinate in the new camera (virtual camera) coordinate system
-    # NOTE: because, the translation of the pivot with respect to the old camera is fixed
-    # when change distance, the translation of the new camera have to be changed accordingly
-    pivot = translation + np.array((0, 0, distance), dtype = np.float32); # translation of the pivot with respect to the old camera (RealSense camera)
-    Rx, _ = cv2.Rodrigues((pitch, 0, 0)); # euler angles -> rotation matrix
-    Ry, _ = cv2.Rodrigues((0, yaw, 0)); # euler angles -> rotation matrix
-    rotation = np.dot(Ry, Rx).astype(np.float32); # merged rotation matrix
-    return np.dot(v - pivot, rotation) + pivot - translation; # coordinate in new camera (virtual camera) coordinate system
-
 @celery.task(name = 'info', base = PlantarPressureWorker)
 def info():
 

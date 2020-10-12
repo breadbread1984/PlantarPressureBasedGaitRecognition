@@ -12,13 +12,13 @@ class VisualizeAdjustment(object):
   def __init__(self):
 
     self.worker = Celery('worker', backend = MESSAGE_QUEUE_URI, broker = MESSAGE_QUEUE_URI);
-    self.distance = 2;
     # translations: the translations of the new camera with respect to the old cameras
     self.translations = list();
     response = self.worker.send_task(name = 'info', args = []);
     infos = response.get();
     assert len(infos) == 4;
     # set the new camera at right back of the first realsense camera
+    self.distance = 2;
     self.translations.append(np.array([0, 0, -1], dtype = np.float32)); # south
     self.translations.append(np.array([-2, 0, 1], dtype = np.float32)); # east
     self.translations.append(np.array([0, 0, 3], dtype = np.float32)); # north
