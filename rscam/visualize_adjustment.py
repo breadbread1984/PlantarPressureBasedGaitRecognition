@@ -31,6 +31,7 @@ class VisualizeAdjustment(object):
     # INFO: this function transform cloud points from physical camera coordinate systems to the virtual camera coordinate system
     # NOTE: translation: the translation of the new camera (virtual camera) with respect to the old camera (RealSense camera)
     # NOTE: (x, y, z): the translation of the pivot with respect to the new camera (virtual camera)
+    # NOTE: the pivot is fixed with respect to the old cameras
     # v.shape = (n, 3) the coordinate in a physical camera coordinate system
     # cam_id.shape = (n) the index of the camera coordinate system which the cloud point belongs to.
     pivots = list();
