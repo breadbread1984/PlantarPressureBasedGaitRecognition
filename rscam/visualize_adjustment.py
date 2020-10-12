@@ -172,23 +172,48 @@ if __name__ == "__main__":
   va = VisualizeAdjustment();
   prev_mouse = (0, 0);
   w, h = va.size();
+  mouse_btns = [False, False, False];
 
   def mouse_cb(event, x, y, flags, param):
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+
+      mouse_btns[0] = True;
+
+    if event == cv2.EVENT_LBUTTONUP:
+
+      mouse_btns[0] = False;
+
+    if event == cv2.EVENT_RBUTTONDOWN:
+
+      mouse_btns[1] = True;
+
+    if event == cv2.EVENT_RBUTTONUP:
+
+      mouse_btns[1] = False;
+
+    if event == cv2.EVENT_MBUTTONDOWN:
+
+      mouse_btns[2] = True;
+
+    if event == cv2.EVENT_MBUTTONUP:
+
+      mouse_btns[2] = False;
 
     if event == cv2.EVENT_MOUSEMOVE:
 
       dx, dy = x - prev_mouse[0], y - prev_mouse[1];
 
-      if event == cv2.EVENT_LBUTTONDOWN:
+      if mouse_btns[0]:
 
         va.change_euler(float(dx) / w * 2, -float(dy) / h * 2);
 
-      if event == cv2.EVENT_RBUTTONDOWN:
+      if mouse_btns[1]:
 
         dp = np.array((dx / w, dy / h, 0), dtype = np.float32)
         va.change_translation(dp);
 
-      if event == cv2.EVENT_MBUTTONDOWN:
+      if mouse_btns[2]:
         
         dz = sqrt(dx**2 + dy**2) + copysign(0.01, -dy);
         va.change_distance(dz);
