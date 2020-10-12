@@ -67,6 +67,17 @@ class PlantarPressureWorker(Task):
                } for device in self.devices];
     return retval;
 
+  def size(self, cam_id):
+      
+    pipeline = rs.pipeline();
+    pipeline.start(self.configs[cam_id]);
+    profile = pipeline.get_active_profile();
+    depth_profile = rs.video_stream_profile(profile.get_stream(rs.stream.depth));
+    depth_intrinsics = depth_profile.get_intrinsics();
+    w, h = depth_intrinsics.width, depth_intrinsics.height;
+    pipeline.stop();
+    return w, h;
+
   def capture(self, cam_id):
     
     pipeline = rs.pipeline();
@@ -190,6 +201,11 @@ class PlantarPressureWorker(Task):
 def info():
 
   return info.info();
+
+@celery.task(name = 'size', base = PlantarPressureWorker)
+def size():
+
+  return size.size();
 
 @celery.task(name = 'capture', base = PlantarPressureWorker)
 def capture(cam_id):
