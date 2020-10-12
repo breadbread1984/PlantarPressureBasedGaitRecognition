@@ -23,8 +23,10 @@ class VisualizeAdjustment(object):
     self.translations.append(np.array([-2, 0, 1], dtype = np.float32)); # east
     self.translations.append(np.array([0, 0, 3], dtype = np.float32)); # north
     self.translations.append(np.array([2, 0, 1], dtype = np.float32)); # west
+    self.pitch = 0;
+    self.yaw = 0;
 
-  def view(self, v, cam_id, pitch = 0, yaw = 0):
+  def view(self, v, cam_id):
 
     # INFO: this function transform cloud points from physical camera coordinate systems to the virtual camera coordinate system
     # v.shape = (n, 3) the coordinate in a physical camera coordinate system
@@ -33,23 +35,23 @@ class VisualizeAdjustment(object):
     rotations = list();
     # south
     pivots.append(self.translations[0] + np.array((0, 0, self.distance), dtype = np.float32));
-    Rx, _ = cv2.Rodrigues((pitch, 0, 0));
-    Ry, _ = cv2.Rodrigues((0, yaw, 0));
+    Rx, _ = cv2.Rodrigues((self.pitch, 0, 0));
+    Ry, _ = cv2.Rodrigues((0, self.yaw, 0));
     rotations.append(np.dot(Ry, Rx).astype(np.float32));
     # east
     pivots.append(self.translations[1] + np.array((self.distance, 0, 0), dtype = np.float32));
     Rx, _ = cv2.Rodrigues((0, 0, 0));
-    Ry, _ = cv2.Rodrigues((0, yaw + pi / 2, 0));
+    Ry, _ = cv2.Rodrigues((0, self.yaw + pi / 2, 0));
     rotations.append(np.dot(Ry, Rx).astype(np.float32))
     # north
     pivots.append(self.translations[2] + np.array((0, 0, -self.distance), dtype = np.float32));
-    Rx, _ = cv2.Rodrigues((-pitch, 0, 0));
-    Ry, _ = cv2.Rodrigues((0, yaw + pi / 2 * 2, 0));
+    Rx, _ = cv2.Rodrigues((-self.pitch, 0, 0));
+    Ry, _ = cv2.Rodrigues((0, self.yaw + pi / 2 * 2, 0));
     rotations.append(np.dot(Ry, Rx).astype(np.float32));
     # west
     pivots.append(self.translations[3] + np.array((-self.distance, 0, 0), dtype = np.float32));
     Rx, _ = cv2.Rodrigues((0, 0, 0));
-    Ry, _ = cv2.Rodrigues((0, yaw + pi / 2 * 3, 0));
+    Ry, _ = cv2.Rodrigues((0, self.yaw + pi / 2 * 3, 0));
     rotations.append(np.dot(Ry, Rx).astype(np.float32));
     pivots = np.array(pivots); # pivots.shape = (4, 3)
     rotations = np.array(rotations); # rotations.shape = (4, 3, 3)
@@ -73,7 +75,7 @@ class VisualizeAdjustment(object):
     proj[v[:, 2] < znear] = np.nan;
     return proj;
 
-  def visualize(self, pitch = 0, yaw = 0):
+  def visualize(self):
 
     # INFO: this function visualize the point cloud into an image
     captures = list();
@@ -97,7 +99,7 @@ class VisualizeAdjustment(object):
     total_texcoords = np.concatenate(total_texcoords, axis = 0); # total_texcoords.shape = (total, 2)
     total_colors = np.concatenate(total_colors, axis = 0); # total_colors.shape = (4, h, w)
     # 2) project point cloud from four physical cameras to the virtual camera
-    v = self.view(total_verts, total_cam_id, pitch, yaw);
+    v = self.view(total_verts, total_cam_id);
     s = v[:, 2].argsort()[::-1]; # sort coordinates according to z value in descent order
     w, h = self.size(channel = 'depth');
     proj = self.project((w, h), v[s]);
@@ -124,9 +126,8 @@ class VisualizeAdjustment(object):
     response = self.worker.send_task(name = 'size', args=[cam_id, channel]);
     return response.get();
 
-  def set_distance(self, distance):
+  def change_distance(self, dz):
 
-    dz = self.distance - distance;
     self.distance -= dz;
     # south: increase on z axis
     self.translations[0][2] += dz;
@@ -137,19 +138,30 @@ class VisualizeAdjustment(object):
     # west: descrease on x axis
     self.translations[3][0] -= dz;
 
+  def set_translation(self, dp):
+
+    rotation = 
+    self.translations[0] -= ;
+    self.translations[1] 
+
 if __name__ == "__main__":
 
   va = VisualizeAdjustment();
   prev_mouse = (0, 0);
-  distance = 2;
   def mouse_cb(event, x, y, flags, param):
 
     if event == cv2.EVENT_MOUSEMOVE:
 
-      dx, dy = x - prev_mouse[0], y - prev_mouse[1];
-      dz = sqrt(dx**2 + dy**2) + copysign(0.01, -dy);
-      distance -= dz;
-      va.set_distance(distance);
+      if event == cv2.EVENT_RBUTTONDOWN:
+
+        dp = np.array((dx / w, dy / h, 0), dtype = np.float32)
+        
+
+      if event == cv2.EVENT_MBUTTONDOWN:
+        
+        dx, dy = x - prev_mouse[0], y - prev_mouse[1];
+        dz = sqrt(dx**2 + dy**2) + copysign(0.01, -dy);
+        va.change_distance(dz);
 
     prev_mouse = (x, y);
 
