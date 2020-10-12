@@ -81,21 +81,28 @@ class VisualizeAdjustment(object):
     # 1) get point cloud from four cameras
     total_verts = list();
     total_cam_id = list();
+    total_texcoords = list();
+    total_colors = list();
     for i in range(4):
       while True:
         response = self.worker.send_task(name = 'pointcloud', args = [i]);
         succeed, (verts, texcoords, depth, color) = response.get();
         if succeed == True: break;
       total_verts.append(verts);
-      total_cam_id.append(np.ones((verts.shape[0]), dtype = np.int32));
+      total_cam_id.append(i * np.ones((verts.shape[0]), dtype = np.int32));
+      total_texcoords.append(texcoords);
+      total_colors.append(color);
     total_verts = np.concatenate(total_verts, axis = 0); # total_verts.shape = (total, 3)
     total_cam_id = np.concatenate(total_cam_id, axis = 0); # total_cam_id.shape = (total)
+    total_texcoords = np.concatenate(total_texcoords, axis = 0); # total_texcoords.shape = (total, 2)
+    total_colors = np.concatenate(total_colors, axis = 0); # total_colors.shape = (4, h, w)
     # 2) project point cloud from four physical cameras to the virtual camera
     v = self.view(total_verts, total_cam_id, pitch, yaw);
     s = v[:, 2].argsort()[::-1]; # sort coordinates according to z value in descent order
     w, h = self.size(channel = 'depth');
     proj = self.project((w, h), v[s]);
     j, i = proj.astype(np.uint32); # get u, v of homogeneous coordinate
+    total_cam_id = total_cam_id[s]; # reorder cam id with the sorted sequence
     # mask of visible voxel in image area
     im = (i >= 0) & (i < h);
     jm = (j >= 0) & (j < w);
@@ -108,8 +115,8 @@ class VisualizeAdjustment(object):
     np.clip(v, 0, cw - 1, out = v);
     # output
     out = np.empty((h, w, 3), dtype = np.uint8);
-    # TODO:
-    out[i[m], j[m]] = 
+    out[i[m], j[m]] = captures[total_cam_id[m], u[m], v[m]];
+    return out;
 
   def size(self, cam_id = 0, channel = 'depth'):
 
