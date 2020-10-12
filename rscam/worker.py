@@ -67,46 +67,19 @@ class PlantarPressureWorker(Task):
                } for device in self.devices];
     return retval;
 
-  def size(self, cam_id):
-      
+  def size(self, cam_id, channel = 'depth'):
+
+    assert channel in ['depth', 'color'];
     pipeline = rs.pipeline();
     pipeline.start(self.configs[cam_id]);
     profile = pipeline.get_active_profile();
-    depth_profile = rs.video_stream_profile(profile.get_stream(rs.stream.depth));
-    depth_intrinsics = depth_profile.get_intrinsics();
-    w, h = depth_intrinsics.width, depth_intrinsics.height;
+    depth_profile = rs.video_stream_profile(profile.get_stream(rs.stream.depth if channel == 'depth' else rs.stream.color));
+    intrinsics = depth_profile.get_intrinsics();
+    w, h = intrinsics.width, intrinsics.height;
     pipeline.stop();
     return w, h;
-
-  def capture(self, cam_id):
-    
-    pipeline = rs.pipeline();
-    pipeline.start(self.configs[cam_id]);
-    # auto-exposure adjustment
-    for i in range(5):
-      pipeline.wait_for_frames();
-    try:
-      frames = pipeline.wait_for_frames();
-      alignment = self.filters[cam_id]['align'].process(frames);
-      depth_frame = alignment.get_depth_frame();
-      depth_frame = self.filters[cam_id]['disparity'].process(depth_frame);
-      depth_frame = self.filters[cam_id]['spatial'].process(depth_frame);
-      depth_frame = self.filters[cam_id]['temporal'].process(depth_frame);
-      depth_frame = self.filters[cam_id]['depth'].process(depth_frame);
-      depth_frame = self.filters[cam_id]['hole'].process(depth_frame);
-      color_frame = alignment.get_color_frame();
-      if not depth_frame or not color_frame:
-        pipeline.stop();
-        return False, None, None;
-      depth_image = np.asanyarray(depth_frame.get_data());
-      color_image = np.asanyarray(color_frame.get_data());
-      pipeline.stop();
-      return True, depth_image.tolist(), color_image.tolist();
-    except:
-      pipeline.stop();
-      return False, None, None;
   
-  def get_point_cloud(self, cam_id):
+  def pointcloud(self, cam_id):
       
     pipeline = rs.pipeline();
     pipeline.start(self.configs[cam_id]);
@@ -117,22 +90,31 @@ class PlantarPressureWorker(Task):
       frames = pipeline.wait_for_frames();
       alignment = self.filters[cam_id]['align'].process(frames);
       depth_frame = alignment.get_depth_frame();
+      #depth_frame = self.filters[cam_id]['disparity'].process(depth_frame);
+      #depth_frame = self.filters[cam_id]['spatial'].process(depth_frame);
+      #depth_frame = self.filters[cam_id]['temporal'].process(depth_frame);
+      #depth_frame = self.filters[cam_id]['depth'].process(depth_frame);
+      #depth_frame = self.filters[cam_id]['hole'].process(depth_frame);
+      depth_frame = self.filters[cam_id]['decimate'].process(depth_frame);
       color_frame = alignment.get_color_frame();
-      depth_frame = decimate.process(depth_frame);
-      self.filters[cam_id]['hole'].process(depth_frame);
-      self.filters[cam_id]['decimate'].process(depth_frame);
+      if not depth_frame or not color_frame:
+        pipeline.stop();
+        return False, (None, None, None, None);
       #depth_intrinsics = rs.video_stream_profile(depth_frame.profile).get_intrinsics();
       depth_image = np.asanyarray(depth_frame.get_data());
       color_image = np.asanyarray(color_frame.get_data());
       depth_colormap = np.asanyarray(colorizer.colorize(depth_frame).get_data());
-      pc = rs.pointcloud();
-      points = pc.calculate(depth_frame);
-      pc.map_to(color_frame);
-      v = points.get_vertices();
-      t = points.get_texture_coordinates();
-      verts = np.asanyarray(v).view(np.float32).reshape(-1, 3); # xyz.shape = (n, 3)
-      texcoords = np.asanyarray(t).view(np.float32).reshape(-1, 2); # uv.shape = (n, 2) in relative float number
-      return verts, texcoords;
+    except:
+      pipeline.stop();
+      return False, (None, None, None, None);
+    pc = rs.pointcloud();
+    points = pc.calculate(depth_frame);
+    pc.map_to(color_frame);
+    v = points.get_vertices();
+    t = points.get_texture_coordinates();
+    verts = np.asanyarray(v).view(np.float32).reshape(-1, 3); # xyz.shape = (n, 3)
+    texcoords = np.asanyarray(t).view(np.float32).reshape(-1, 2); # uv.shape = (n, 2) in relative float number
+    return True, (verts.tolist(), texcoords.tolist(), depth_image.tolist(), color_image.tolist());
 
   def pointcloud(self, out, verts, texcoords, color, painter = True, translation = np.array([0, 0, -1], dtype = np.float32), pitch = 0, yaw = 0, distance = 2):
 
@@ -203,14 +185,14 @@ def info():
   return info.info();
 
 @celery.task(name = 'size', base = PlantarPressureWorker)
-def size():
+def size(cam_id, channel = 'depth'):
 
-  return size.size();
+  return size.size(cam_id, channel);
 
-@celery.task(name = 'capture', base = PlantarPressureWorker)
-def capture(cam_id):
+@celery.task(name = 'pointcloud', base = PlantarPressureWorker)
+def pointcloud(cam_id):
 
-  return capture.capture(cam_id);
+  return pointcloud.pointcloud(cam_id);
 
 if __name__ == "__main__":
 
