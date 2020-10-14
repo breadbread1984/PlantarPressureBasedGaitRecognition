@@ -151,7 +151,7 @@ class VisualizeAdjustment(object):
     rotation = np.dot(Ry, Rx).astype(np.float32);
     self.translations[0] -= np.dot(rotation, np.array((dx, dy, dz), dtype = np.float32));
     # east
-    Rx, _ = cv2.Rodrigues((0, 0, 0));
+    Rx, _ = cv2.Rodrigues((0, 0, -self.pitch));
     Ry, _ = cv2.Rodrigues((0, self.yaw + pi / 2, 0));
     rotation = np.dot(Ry, Rx).astype(np.float32);
     self.translations[1] -= np.dot(rotation, np.array((dz, dy, -dx), dtype = np.float32));
@@ -161,7 +161,7 @@ class VisualizeAdjustment(object):
     rotation = np.dot(Ry, Rx).astype(np.float32);
     self.translations[2] -= np.dot(rotation, np.array((-dx, dy, -dz), dtype = np.float32));
     # west
-    Rx, _ = cv2.Rodrigues((0, 0, 0));
+    Rx, _ = cv2.Rodrigues((0, 0, self.pitch));
     Ry, _ = cv2.Rodrigues((0, self.yaw + pi / 2 * 3, 0));
     rotation = np.dot(Ry, Rx).astype(np.float32);
     self.translations[3] -= np.dot(rotation, np.array((-dz, dy, dx), dtype = np.float32));
