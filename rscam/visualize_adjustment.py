@@ -136,11 +136,11 @@ class VisualizeAdjustment(object):
     # south: increase on z axis
     self.translations[0][2] += dz;
     # east: increase on x axis
-    self.translations[1][0] += dz;
+    self.translations[1][2] += dz;
     # north: decrease on z axis
-    self.translations[2][2] -= dz;
+    self.translations[2][2] += dz;
     # west: descrease on x axis
-    self.translations[3][0] -= dz;
+    self.translations[3][2] += dz;
 
   def change_translation(self, dp):
 
