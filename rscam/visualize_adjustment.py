@@ -44,17 +44,17 @@ class VisualizeAdjustment(object):
     rotations.append(np.dot(Ry, Rx).astype(np.float32));
     # east
     pivots.append(self.translations[1] + np.array((self.distance, 0, 0), dtype = np.float32));
-    Rx, _ = cv2.Rodrigues((0, 0, -self.pitch));
+    Rx, _ = cv2.Rodrigues((self.pitch, 0, 0));
     Ry, _ = cv2.Rodrigues((0, self.yaw + pi / 2, 0));
     rotations.append(np.dot(Ry, Rx).astype(np.float32))
     # north
     pivots.append(self.translations[2] + np.array((0, 0, -self.distance), dtype = np.float32));
-    Rx, _ = cv2.Rodrigues((-self.pitch, 0, 0));
+    Rx, _ = cv2.Rodrigues((self.pitch, 0, 0));
     Ry, _ = cv2.Rodrigues((0, self.yaw + pi / 2 * 2, 0));
     rotations.append(np.dot(Ry, Rx).astype(np.float32));
     # west
     pivots.append(self.translations[3] + np.array((-self.distance, 0, 0), dtype = np.float32));
-    Rx, _ = cv2.Rodrigues((0, 0, self.pitch));
+    Rx, _ = cv2.Rodrigues((self.pitch, 0, 0));
     Ry, _ = cv2.Rodrigues((0, self.yaw + pi / 2 * 3, 0));
     rotations.append(np.dot(Ry, Rx).astype(np.float32));
     pivots = np.array(pivots); # pivots.shape = (4, 3)
