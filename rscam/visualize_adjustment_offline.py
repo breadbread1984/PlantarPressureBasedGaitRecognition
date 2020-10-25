@@ -253,7 +253,7 @@ if __name__ == "__main__":
     cv2.imshow('show', image);
     key = cv2.waitKey(1);
     if key == ord('q'):
-      print('calibrated optimal distance is %d' % distance);
+      print('calibrated optimal distance is %d' % va.distance);
       break;
     if key == ord('r'):
       va.reset_position();
