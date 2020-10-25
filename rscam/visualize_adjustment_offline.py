@@ -110,24 +110,24 @@ class VisualizeAdjustment(object):
       total_cam_id.append(i * np.ones((verts.shape[0]), dtype = np.int32));
       total_texcoords.append(texcoords);
       total_colors.append(color);
-    total_verts = np.concatenate(total_verts, axis = 0); # total_verts.shape = (total, 3)
-    total_cam_id = np.concatenate(total_cam_id, axis = 0); # total_cam_id.shape = (total)
-    total_texcoords = np.concatenate(total_texcoords, axis = 0); # total_texcoords.shape = (total, 2)
-    total_colors = np.concatenate(total_colors, axis = 0); # total_colors.shape = (4, h, w)
+    total_verts = np.concatenate(total_verts, axis = 0); # total_verts.shape = (h * w, 3)
+    total_cam_id = np.concatenate(total_cam_id, axis = 0); # total_cam_id.shape = (h * w)
+    total_texcoords = np.concatenate(total_texcoords, axis = 0); # total_texcoords.shape = (h * w, 2)
+    total_colors = np.stack(total_colors, axis = 0); # total_colors.shape = (4, h, w, 3)
     # 2) project point cloud from four physical cameras to the virtual camera
     v = self.view(total_verts, total_cam_id);
     s = v[:, 2].argsort()[::-1]; # sort coordinates according to z value in descent order
     w, h = self.size(channel = 'depth');
     proj = self.project((w, h), v[s]); # proj.shape = (h * w, 2)
-    j, i = proj.astype(np.uint32).T; # get u, v of homogeneous coordinate
-    total_cam_id = total_cam_id[s]; # reorder cam id with the sorted sequence
+    j, i = proj.astype(np.uint32).T; # get u, v of homogeneous coordinate, shape = (h * w)
+    total_cam_id = total_cam_id[s]; # reorder cam id with the sorted sequence, shape = (h * w)
     # mask of visible voxel in image area
     im = (i >= 0) & (i < h);
     jm = (j >= 0) & (j < w);
     m = im & jm;
     cw, ch = self.size(channel = 'color');
     # turn the texcoordinate into absolute coordinate
-    v, u = (texcoords[s] * (cw, ch) + 0.5).astype(np.uint32).T;
+    v, u = (total_texcoords[s] * (cw, ch) + 0.5).astype(np.uint32).T;
     # clip texcoordinate within captured image area
     np.clip(u, 0, ch - 1, out = u);
     np.clip(v, 0, cw - 1, out = v);
@@ -199,6 +199,7 @@ if __name__ == "__main__":
 
   def mouse_cb(event, x, y, flags, param):
 
+    global prev_mouse;
     if event == cv2.EVENT_LBUTTONDOWN:
 
       mouse_btns[0] = True;
