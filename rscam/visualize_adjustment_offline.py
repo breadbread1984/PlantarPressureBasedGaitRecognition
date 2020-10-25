@@ -118,8 +118,8 @@ class VisualizeAdjustment(object):
     v = self.view(total_verts, total_cam_id);
     s = v[:, 2].argsort()[::-1]; # sort coordinates according to z value in descent order
     w, h = self.size(channel = 'depth');
-    proj = self.project((w, h), v[s]);
-    j, i = proj.astype(np.uint32); # get u, v of homogeneous coordinate
+    proj = self.project((w, h), v[s]); # proj.shape = (h * w, 2)
+    j, i = proj.astype(np.uint32).T; # get u, v of homogeneous coordinate
     total_cam_id = total_cam_id[s]; # reorder cam id with the sorted sequence
     # mask of visible voxel in image area
     im = (i >= 0) & (i < h);
