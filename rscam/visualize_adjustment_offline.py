@@ -106,14 +106,14 @@ class VisualizeAdjustment(object):
     for i in range(4):
       cam_name = self.cam_names[i];
       verts, texcoords, depth, color = self.cams[cam_name]['verts'], self.cams[cam_name]['texcoords'], self.cams[cam_name]['depth'], self.cams[cam_name]['color'];
-      total_verts.append(verts);
-      total_cam_id.append(i * np.ones((verts.shape[0]), dtype = np.int32));
-      total_texcoords.append(texcoords);
-      total_colors.append(color);
-    total_verts = np.concatenate(total_verts, axis = 0); # total_verts.shape = (h * w, 3)
-    total_cam_id = np.concatenate(total_cam_id, axis = 0); # total_cam_id.shape = (h * w)
-    total_texcoords = np.concatenate(total_texcoords, axis = 0); # total_texcoords.shape = (h * w, 2)
-    total_colors = np.stack(total_colors, axis = 0); # total_colors.shape = (4, h, w, 3)
+      total_verts.append(verts); # verts.shape = (320 * 240,3)
+      total_cam_id.append(i * np.ones((verts.shape[0]), dtype = np.int32)); # shape = (320 * 240)
+      total_texcoords.append(texcoords); # texcoords.shape = (320 * 240, 2)
+      total_colors.append(color); # color.shape = (480, 640, 3)
+    total_verts = np.concatenate(total_verts, axis = 0); # total_verts.shape = (320 * 240, 3)
+    total_cam_id = np.concatenate(total_cam_id, axis = 0); # total_cam_id.shape = (320 * 240)
+    total_texcoords = np.concatenate(total_texcoords, axis = 0); # total_texcoords.shape = (320 * 240, 2)
+    total_colors = np.stack(total_colors, axis = 0); # total_colors.shape = (4, 480, 640, 3)
     # 2) project point cloud from four physical cameras to the virtual camera
     v = self.view(total_verts, total_cam_id);
     s = v[:, 2].argsort()[::-1]; # sort coordinates according to z value in descent order
