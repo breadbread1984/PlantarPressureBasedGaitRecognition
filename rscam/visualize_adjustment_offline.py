@@ -104,9 +104,8 @@ class VisualizeAdjustment(object):
     total_texcoords = list();
     total_colors = list();
     for i in range(4):
-      while True:
-        cam_name = self.cam_names[i];
-        verts, texcoords, depth, color = self.cams[cam_name]['verts'], self.cams[cam_name]['texcoords'], self.cams[cam_name]['depth'], self.cams[cam_name]['color'];
+      cam_name = self.cam_names[i];
+      verts, texcoords, depth, color = self.cams[cam_name]['verts'], self.cams[cam_name]['texcoords'], self.cams[cam_name]['depth'], self.cams[cam_name]['color'];
       total_verts.append(verts);
       total_cam_id.append(i * np.ones((verts.shape[0]), dtype = np.int32));
       total_texcoords.append(texcoords);
