@@ -3,6 +3,7 @@
 from math import sqrt, copysign, pi;
 import numpy as np;
 import cv2;
+import pyrealsense2 as rs;
 import tensorflow as tf;
 from settings import *;
 
@@ -104,7 +105,7 @@ class VisualizeAdjustment(object):
     total_colors = list();
     for i in range(4):
       while True:
-        cam_name = cam_names[i];
+        cam_name = self.cam_names[i];
         verts, texcoords, depth, color = self.cams[cam_name]['verts'], self.cams[cam_name]['texcoords'], self.cams[cam_name]['depth'], self.cams[cam_name]['color'];
       total_verts.append(verts);
       total_cam_id.append(i * np.ones((verts.shape[0]), dtype = np.int32));
@@ -133,7 +134,7 @@ class VisualizeAdjustment(object):
     np.clip(v, 0, cw - 1, out = v);
     # output
     out = np.empty((h, w, 3), dtype = np.uint8);
-    out[i[m], j[m]] = captures[total_cam_id[m], u[m], v[m]];
+    out[i[m], j[m]] = total_colors[total_cam_id[m], u[m], v[m]];
     return out;
 
   def size(self, cam_id = 0, channel = 'depth'):

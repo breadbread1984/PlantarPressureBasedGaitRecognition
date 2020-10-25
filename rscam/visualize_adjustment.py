@@ -121,7 +121,7 @@ class VisualizeAdjustment(object):
     np.clip(v, 0, cw - 1, out = v);
     # output
     out = np.empty((h, w, 3), dtype = np.uint8);
-    out[i[m], j[m]] = captures[total_cam_id[m], u[m], v[m]];
+    out[i[m], j[m]] = total_colors[total_cam_id[m], u[m], v[m]];
     return out;
 
   def size(self, cam_id = 0, channel = 'depth'):
